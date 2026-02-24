@@ -1,0 +1,31 @@
+---
+- name: Generate encryption key on Jumpbox
+  ansible.builtin.shell: head -c 32 /dev/urandom | base64
+  register: encryption_key_raw
+  when: inventory_hostname == 'jumpbox'
+  changed_when: false
+
+- name: Set encryption key fact
+  ansible.builtin.set_fact:
+    encryption_key: "{{ hostvars['jumpbox']['encryption_key_raw']['stdout'] }}"
+
+- name: Create encryption config on Jumpbox
+  ansible.builtin.template:
+    src: encryption-config.yaml.j2
+    dest: /root/certs/encryption-config.yaml
+    mode: "0644"
+  when: inventory_hostname == 'jumpbox'
+
+- name: Slurp encryption config from Jumpbox
+  ansible.builtin.slurp:
+    src: /root/certs/encryption-config.yaml
+  register: encryption_config_slurped
+  delegate_to: jumpbox
+  when: "'controllers' in group_names"
+
+- name: Write encryption config to controllers
+  ansible.builtin.copy:
+    content: "{{ encryption_config_slurped.content | b64decode }}"
+    dest: /root/encryption-config.yaml
+    mode: "0600"
+  when: "'controllers' in group_names"

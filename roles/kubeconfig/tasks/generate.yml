@@ -1,0 +1,126 @@
+---
+- name: Generate worker kubeconfigs
+  ansible.builtin.shell: |
+    /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way \
+      --certificate-authority=ca.crt \
+      --embed-certs=true \
+      --server=https://server.kubernetes.local:6443 \
+      --kubeconfig={{ item }}.kubeconfig
+
+    /usr/local/bin/kubectl config set-credentials system:node:{{ item }} \
+      --client-certificate={{ item }}.crt \
+      --client-key={{ item }}.key \
+      --embed-certs=true \
+      --kubeconfig={{ item }}.kubeconfig
+
+    /usr/local/bin/kubectl config set-context default \
+      --cluster=kubernetes-the-hard-way \
+      --user=system:node:{{ item }} \
+      --kubeconfig={{ item }}.kubeconfig
+
+    /usr/local/bin/kubectl config use-context default \
+      --kubeconfig={{ item }}.kubeconfig
+  args:
+    chdir: /root/certs
+    creates: "/root/certs/{{ item }}.kubeconfig"
+  loop: "{{ groups['workers'] }}"
+
+- name: Generate kube-proxy kubeconfig
+  ansible.builtin.shell: |
+    /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way \
+      --certificate-authority=ca.crt \
+      --embed-certs=true \
+      --server=https://server.kubernetes.local:6443 \
+      --kubeconfig=kube-proxy.kubeconfig
+
+    /usr/local/bin/kubectl config set-credentials system:kube-proxy \
+      --client-certificate=kube-proxy.crt \
+      --client-key=kube-proxy.key \
+      --embed-certs=true \
+      --kubeconfig=kube-proxy.kubeconfig
+
+    /usr/local/bin/kubectl config set-context default \
+      --cluster=kubernetes-the-hard-way \
+      --user=system:kube-proxy \
+      --kubeconfig=kube-proxy.kubeconfig
+
+    /usr/local/bin/kubectl config use-context default \
+      --kubeconfig=kube-proxy.kubeconfig
+  args:
+    chdir: /root/certs
+    creates: /root/certs/kube-proxy.kubeconfig
+
+- name: Generate kube-controller-manager kubeconfig
+  ansible.builtin.shell: |
+    /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way \
+      --certificate-authority=ca.crt \
+      --embed-certs=true \
+      --server=https://server.kubernetes.local:6443 \
+      --kubeconfig=kube-controller-manager.kubeconfig
+
+    /usr/local/bin/kubectl config set-credentials system:kube-controller-manager \
+      --client-certificate=kube-controller-manager.crt \
+      --client-key=kube-controller-manager.key \
+      --embed-certs=true \
+      --kubeconfig=kube-controller-manager.kubeconfig
+
+    /usr/local/bin/kubectl config set-context default \
+      --cluster=kubernetes-the-hard-way \
+      --user=system:kube-controller-manager \
+      --kubeconfig=kube-controller-manager.kubeconfig
+
+    /usr/local/bin/kubectl config use-context default \
+      --kubeconfig=kube-controller-manager.kubeconfig
+  args:
+    chdir: /root/certs
+    creates: /root/certs/kube-controller-manager.kubeconfig
+
+- name: Generate kube-scheduler kubeconfig
+  ansible.builtin.shell: |
+    /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way \
+      --certificate-authority=ca.crt \
+      --embed-certs=true \
+      --server=https://server.kubernetes.local:6443 \
+      --kubeconfig=kube-scheduler.kubeconfig
+
+    /usr/local/bin/kubectl config set-credentials system:kube-scheduler \
+      --client-certificate=kube-scheduler.crt \
+      --client-key=kube-scheduler.key \
+      --embed-certs=true \
+      --kubeconfig=kube-scheduler.kubeconfig
+
+    /usr/local/bin/kubectl config set-context default \
+      --cluster=kubernetes-the-hard-way \
+      --user=system:kube-scheduler \
+      --kubeconfig=kube-scheduler.kubeconfig
+
+    /usr/local/bin/kubectl config use-context default \
+      --kubeconfig=kube-scheduler.kubeconfig
+  args:
+    chdir: /root/certs
+    creates: /root/certs/kube-scheduler.kubeconfig
+
+- name: Generate admin kubeconfig
+  ansible.builtin.shell: |
+    /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way \
+      --certificate-authority=ca.crt \
+      --embed-certs=true \
+      --server=https://127.0.0.1:6443 \
+      --kubeconfig=admin.kubeconfig
+
+    /usr/local/bin/kubectl config set-credentials admin \
+      --client-certificate=admin.crt \
+      --client-key=admin.key \
+      --embed-certs=true \
+      --kubeconfig=admin.kubeconfig
+
+    /usr/local/bin/kubectl config set-context default \
+      --cluster=kubernetes-the-hard-way \
+      --user=admin \
+      --kubeconfig=admin.kubeconfig
+
+    /usr/local/bin/kubectl config use-context default \
+      --kubeconfig=admin.kubeconfig
+  args:
+    chdir: /root/certs
+    creates: /root/certs/admin.kubeconfig

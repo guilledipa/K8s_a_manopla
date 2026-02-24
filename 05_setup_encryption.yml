@@ -1,0 +1,6 @@
+---
+- name: Generate Data Encryption Config and Key
+  hosts: all
+  become: true
+  roles:
+    - encryption

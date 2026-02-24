@@ -1,0 +1,55 @@
+---
+- name: Generate kubeconfig files on Jumpbox
+  ansible.builtin.include_tasks: generate.yml
+  when: inventory_hostname == 'jumpbox'
+
+- name: Create required directories on workers
+  ansible.builtin.file:
+    path: "/var/lib/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - kubelet
+    - kube-proxy
+  when: "'workers' in group_names"
+
+- name: Slurp worker kubeconfigs from Jumpbox
+  ansible.builtin.slurp:
+    src: "/root/certs/{{ item.src }}"
+  register: kubeconfig_worker_slurped
+  delegate_to: jumpbox
+  loop:
+    - { src: "kube-proxy.kubeconfig", dest: "kube-proxy/kubeconfig" }
+    - { src: "{{ inventory_hostname }}.kubeconfig", dest: "kubelet/kubeconfig" }
+  when: "'workers' in group_names"
+
+- name: Write worker kubeconfigs to nodes
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "/var/lib/{{ item.item.dest }}"
+    mode: "0600"
+  loop: "{{ kubeconfig_worker_slurped.results }}"
+  when: "'workers' in group_names"
+  loop_control:
+    label: "{{ item.item.dest }}"
+
+- name: Slurp controller kubeconfigs from Jumpbox
+  ansible.builtin.slurp:
+    src: "/root/certs/{{ item }}"
+  register: kubeconfig_controller_slurped
+  delegate_to: jumpbox
+  loop:
+    - admin.kubeconfig
+    - kube-controller-manager.kubeconfig
+    - kube-scheduler.kubeconfig
+  when: "'controllers' in group_names"
+
+- name: Write controller kubeconfigs to nodes
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "/root/{{ item.item }}"
+    mode: "0600"
+  loop: "{{ kubeconfig_controller_slurped.results }}"
+  when: "'controllers' in group_names"
+  loop_control:
+    label: "{{ item.item }}"
