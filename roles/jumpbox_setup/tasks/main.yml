@@ -50,6 +50,7 @@
     url: "{{ item }}"
     dest: "{{ jumpbox_setup_downloads_dir }}/"
     mode: "0644"
+    force: false
   loop: "{{ jumpbox_setup_binary_urls }}"
 
 - name: Define versions (based on tutorial defaults or extracted)
