@@ -1,0 +1,23 @@
+---
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Update /etc/hosts with internal IP for self
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^127.0.1.1"
+    line: "127.0.1.1\t{{ inventory_hostname }}.kubernetes.local {{ inventory_hostname }}"
+    state: present
+
+- name: Add host lookup table entries
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} Kubernetes The Hard Way"
+    block: |
+      {% for host in groups['all'] %}
+      {% if hostvars[host]['internal_ip'] is defined %}
+      {{ hostvars[host]['internal_ip'] }} {{ host }}.kubernetes.local {{ host }}
+      {% endif %}
+      {% endfor %}
+    state: present

@@ -1,0 +1,31 @@
+---
+- name: Generate SSH Key on Jumpbox
+  hosts: jumpbox
+  become: true
+  tasks:
+    - name: Generate SSH key pair
+      ansible.builtin.user:
+        name: root
+        generate_ssh_key: true
+        ssh_key_bits: 2048
+        ssh_key_file: .ssh/id_rsa
+
+    - name: Read public key
+      ansible.builtin.slurp:
+        src: /root/.ssh/id_rsa.pub
+      register: jumpbox_public_key
+
+- name: Configure Compute Resources
+  hosts: k8s, jumpbox
+  become: true
+  vars:
+    jumpbox_pub_key: "{{ hostvars['jumpbox']['jumpbox_public_key']['content'] | b64decode }}"
+  roles:
+    - common
+  tasks:
+    - name: Add Jumpbox public key to authorized_keys
+      ansible.builtin.authorized_key:
+        user: root
+        state: present
+        key: "{{ jumpbox_pub_key }}"
+      when: "'k8s' in group_names"
