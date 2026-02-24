@@ -1,0 +1,30 @@
+---
+- name: Master Playbook for Kubernetes The Hard Way
+  import_playbook: 01_setup_jumpbox.yml
+
+- name: Setup Compute Resources
+  import_playbook: 02_setup_compute_resources.yml
+
+- name: Setup PKI
+  import_playbook: 03_setup_pki.yml
+
+- name: Setup Kubeconfig
+  import_playbook: 04_setup_kubeconfig.yml
+
+- name: Setup Encryption
+  import_playbook: 05_setup_encryption.yml
+
+- name: Setup etcd
+  import_playbook: 06_setup_etcd.yml
+
+- name: Setup Control Plane
+  import_playbook: 07_setup_control_plane.yml
+
+- name: Setup Workers
+  import_playbook: 08_setup_workers.yml
+
+- name: Setup Remote Access
+  import_playbook: 09_setup_remote_access.yml
+
+- name: Provision Pod Network Routes
+  import_playbook: 10_setup_pod_routes.yml
