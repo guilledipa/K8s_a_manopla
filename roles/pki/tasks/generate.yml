@@ -1,0 +1,63 @@
+---
+- name: Create certs directory
+  ansible.builtin.file:
+    path: /root/certs
+    state: directory
+    mode: "0755"
+
+- name: Template ca.conf
+  ansible.builtin.template:
+    src: ca.conf.j2
+    dest: /root/certs/ca.conf
+    mode: "0644"
+
+- name: Generate CA certificate
+  ansible.builtin.shell: |
+    openssl genrsa -out ca.key 4096
+    openssl req -x509 -new -sha512 -noenc \
+      -key ca.key -days 3653 \
+      -config ca.conf \
+      -out ca.crt
+  args:
+    chdir: /root/certs
+    creates: /root/certs/ca.crt
+
+- name: Generate component certificates
+  ansible.builtin.shell: |
+    openssl genrsa -out "{{ item }}.key" 4096
+    openssl req -new -key "{{ item }}.key" -sha256 \
+      -config "ca.conf" -section "{{ item }}" \
+      -out "{{ item }}.csr"
+    openssl x509 -req -days 3653 -in "{{ item }}.csr" \
+      -copy_extensions copyall \
+      -sha256 -CA "ca.crt" \
+      -CAkey "ca.key" \
+      -CAcreateserial \
+      -out "{{ item }}.crt"
+  args:
+    chdir: /root/certs
+    creates: "/root/certs/{{ item }}.crt"
+  loop:
+    - admin
+    - kube-proxy
+    - kube-scheduler
+    - kube-controller-manager
+    - kube-api-server
+    - service-accounts
+
+- name: Generate worker certificates
+  ansible.builtin.shell: |
+    openssl genrsa -out "{{ item }}.key" 4096
+    openssl req -new -key "{{ item }}.key" -sha256 \
+      -config "ca.conf" -section "{{ item }}" \
+      -out "{{ item }}.csr"
+    openssl x509 -req -days 3653 -in "{{ item }}.csr" \
+      -copy_extensions copyall \
+      -sha256 -CA "ca.crt" \
+      -CAkey "ca.key" \
+      -CAcreateserial \
+      -out "{{ item }}.crt"
+  args:
+    chdir: /root/certs
+    creates: "/root/certs/{{ item }}.crt"
+  loop: "{{ groups['workers'] }}"

@@ -1,0 +1,6 @@
+---
+- name: Provision CA and Generate TLS Certificates
+  hosts: all
+  become: true
+  roles:
+    - pki

@@ -24,7 +24,7 @@
     - common
   tasks:
     - name: Add Jumpbox public key to authorized_keys
-      ansible.builtin.authorized_key:
+      ansible.posix.authorized_key:
         user: root
         state: present
         key: "{{ jumpbox_pub_key }}"

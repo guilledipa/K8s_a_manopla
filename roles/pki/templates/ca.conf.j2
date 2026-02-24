@@ -1,0 +1,162 @@
+[req]
+distinguished_name = req_distinguished_name
+prompt             = no
+x509_extensions    = ca_x509_extensions
+
+[ca_x509_extensions]
+basicConstraints = CA:TRUE
+keyUsage         = cRLSign, keyCertSign
+
+[req_distinguished_name]
+C   = US
+ST  = Washington
+L   = Seattle
+CN  = CA
+
+[admin]
+distinguished_name = admin_distinguished_name
+prompt             = no
+req_extensions     = default_req_extensions
+
+[admin_distinguished_name]
+CN = admin
+O  = system:masters
+
+[service-accounts]
+distinguished_name = service-accounts_distinguished_name
+prompt             = no
+req_extensions     = default_req_extensions
+
+[service-accounts_distinguished_name]
+CN = service-accounts
+
+{% for host in groups['workers'] %}
+[{{ host }}]
+distinguished_name = {{ host }}_distinguished_name
+prompt             = no
+req_extensions     = {{ host }}_req_extensions
+
+[{{ host }}_req_extensions]
+basicConstraints     = CA:FALSE
+extendedKeyUsage     = clientAuth, serverAuth
+keyUsage             = critical, digitalSignature, keyEncipherment
+nsCertType           = client
+nsComment            = "{{ host }} Certificate"
+subjectAltName       = DNS:{{ host }}, IP:127.0.0.1, IP:{{ hostvars[host]['internal_ip'] }}
+subjectKeyIdentifier = hash
+
+[{{ host }}_distinguished_name]
+CN = system:node:{{ host }}
+O  = system:nodes
+C  = US
+ST = Washington
+L  = Seattle
+{% endfor %}
+
+[kube-proxy]
+distinguished_name = kube-proxy_distinguished_name
+prompt             = no
+req_extensions     = kube-proxy_req_extensions
+
+[kube-proxy_req_extensions]
+basicConstraints     = CA:FALSE
+extendedKeyUsage     = clientAuth, serverAuth
+keyUsage             = critical, digitalSignature, keyEncipherment
+nsCertType           = client
+nsComment            = "Kube Proxy Certificate"
+subjectAltName       = DNS:kube-proxy, IP:127.0.0.1
+subjectKeyIdentifier = hash
+
+[kube-proxy_distinguished_name]
+CN = system:kube-proxy
+O  = system:node-proxier
+C  = US
+ST = Washington
+L  = Seattle
+
+[kube-controller-manager]
+distinguished_name = kube-controller-manager_distinguished_name
+prompt             = no
+req_extensions     = kube-controller-manager_req_extensions
+
+[kube-controller-manager_req_extensions]
+basicConstraints     = CA:FALSE
+extendedKeyUsage     = clientAuth, serverAuth
+keyUsage             = critical, digitalSignature, keyEncipherment
+nsCertType           = client
+nsComment            = "Kube Controller Manager Certificate"
+subjectAltName       = DNS:kube-controller-manager, IP:127.0.0.1
+subjectKeyIdentifier = hash
+
+[kube-controller-manager_distinguished_name]
+CN = system:kube-controller-manager
+O  = system:kube-controller-manager
+C  = US
+ST = Washington
+L  = Seattle
+
+[kube-scheduler]
+distinguished_name = kube-scheduler_distinguished_name
+prompt             = no
+req_extensions     = kube-scheduler_req_extensions
+
+[kube-scheduler_req_extensions]
+basicConstraints     = CA:FALSE
+extendedKeyUsage     = clientAuth, serverAuth
+keyUsage             = critical, digitalSignature, keyEncipherment
+nsCertType           = client
+nsComment            = "Kube Scheduler Certificate"
+subjectAltName       = DNS:kube-scheduler, IP:127.0.0.1
+subjectKeyIdentifier = hash
+
+[kube-scheduler_distinguished_name]
+CN = system:kube-scheduler
+O  = system:system:kube-scheduler
+C  = US
+ST = Washington
+L  = Seattle
+
+[kube-api-server]
+distinguished_name = kube-api-server_distinguished_name
+prompt             = no
+req_extensions     = kube-api-server_req_extensions
+
+[kube-api-server_req_extensions]
+basicConstraints     = CA:FALSE
+extendedKeyUsage     = clientAuth, serverAuth
+keyUsage             = critical, digitalSignature, keyEncipherment
+nsCertType           = client, server
+nsComment            = "Kube API Server Certificate"
+subjectAltName       = @kube-api-server_alt_names
+subjectKeyIdentifier = hash
+
+[kube-api-server_alt_names]
+IP.0  = 127.0.0.1
+IP.1  = 10.32.0.1
+{% for host in groups['controllers'] %}
+IP.{{ loop.index + 1 }} = {{ hostvars[host]['internal_ip'] }}
+{% endfor %}
+DNS.0 = kubernetes
+DNS.1 = kubernetes.default
+DNS.2 = kubernetes.default.svc
+DNS.3 = kubernetes.default.svc.cluster
+DNS.4 = kubernetes.svc.cluster.local
+{% for host in groups['controllers'] %}
+DNS.{{ loop.index0 * 2 + 5 }} = {{ host }}.kubernetes.local
+DNS.{{ loop.index0 * 2 + 6 }} = {{ host }}
+{% endfor %}
+DNS.{{ groups['controllers']|length * 2 + 5 }} = api-server.kubernetes.local
+
+[kube-api-server_distinguished_name]
+CN = kubernetes
+C  = US
+ST = Washington
+L  = Seattle
+
+[default_req_extensions]
+basicConstraints     = CA:FALSE
+extendedKeyUsage     = clientAuth
+keyUsage             = critical, digitalSignature, keyEncipherment
+nsCertType           = client
+nsComment            = "Admin Client Certificate"
+subjectKeyIdentifier = hash

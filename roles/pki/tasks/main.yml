@@ -1,0 +1,56 @@
+---
+- name: Generate certificates on Jumpbox
+  ansible.builtin.include_tasks: generate.yml
+  when: inventory_hostname == 'jumpbox'
+
+- name: Create kubelet directory on workers
+  ansible.builtin.file:
+    path: /var/lib/kubelet
+    state: directory
+    mode: "0755"
+  when: "'workers' in group_names"
+
+- name: Slurp worker certificates from Jumpbox
+  ansible.builtin.slurp:
+    src: "/root/certs/{{ item.src }}"
+  register: pki_worker_certs_slurped
+  delegate_to: jumpbox
+  loop:
+    - { src: "ca.crt", dest: "ca.crt" }
+    - { src: "{{ inventory_hostname }}.crt", dest: "kubelet.crt" }
+    - { src: "{{ inventory_hostname }}.key", dest: "kubelet.key" }
+  when: "'workers' in group_names"
+
+- name: Write worker certificates to nodes
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "/var/lib/kubelet/{{ item.item.dest }}"
+    mode: "0600"
+  loop: "{{ pki_worker_certs_slurped.results }}"
+  when: "'workers' in group_names"
+  loop_control:
+    label: "{{ item.item.dest }}"
+
+- name: Slurp controller certificates from Jumpbox
+  ansible.builtin.slurp:
+    src: "/root/certs/{{ item }}"
+  register: pki_controller_certs_slurped
+  delegate_to: jumpbox
+  loop:
+    - ca.key
+    - ca.crt
+    - kube-api-server.key
+    - kube-api-server.crt
+    - service-accounts.key
+    - service-accounts.crt
+  when: "'controllers' in group_names"
+
+- name: Write controller certificates to nodes
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "/root/{{ item.item }}"
+    mode: "0600"
+  loop: "{{ pki_controller_certs_slurped.results }}"
+  when: "'controllers' in group_names"
+  loop_control:
+    label: "{{ item.item }}"
