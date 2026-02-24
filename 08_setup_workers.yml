@@ -1,0 +1,6 @@
+---
+- name: Bootstrap Kubernetes Worker Nodes
+  hosts: workers
+  become: true
+  roles:
+    - worker

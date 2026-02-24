@@ -8,23 +8,22 @@
     - { path: /etc/etcd, mode: "0755" }
     - { path: /var/lib/etcd, mode: "0700" }
 
-- name: Slurp etcd binaries from Jumpbox
-  ansible.builtin.slurp:
-    src: "{{ jumpbox_setup_downloads_dir }}/{{ item }}"
-  register: etcd_binaries_slurped
+- name: Push etcd binaries from Jumpbox to controllers
+  ansible.posix.synchronize:
+    src: "{{ jumpbox_setup_downloads_dir }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
   delegate_to: jumpbox
   loop:
-    - controller/etcd
-    - client/etcdctl
+    - { src: controller/etcd, dest: /usr/local/bin/etcd }
+    - { src: client/etcdctl, dest: /usr/local/bin/etcdctl }
 
-- name: Install etcd binaries
-  ansible.builtin.copy:
-    content: "{{ item.content | b64decode }}"
-    dest: "/usr/local/bin/{{ item.item | basename }}"
+- name: Set permissions on etcd binaries
+  ansible.builtin.file:
+    path: "/usr/local/bin/{{ item }}"
     mode: "0755"
-  loop: "{{ etcd_binaries_slurped.results }}"
-  loop_control:
-    label: "{{ item.item | basename }}"
+  loop:
+    - etcd
+    - etcdctl
 
 - name: Copy certificates to /etc/etcd
   ansible.builtin.copy:

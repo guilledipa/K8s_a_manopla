@@ -1,0 +1,3 @@
+---
+jumpbox_setup_dir: /root/kubernetes-the-hard-way
+jumpbox_setup_downloads_dir: "{{ jumpbox_setup_dir }}/downloads"

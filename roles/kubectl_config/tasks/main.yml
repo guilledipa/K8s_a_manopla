@@ -1,0 +1,31 @@
+---
+- name: Configure kubectl cluster
+  ansible.builtin.command:
+    cmd: >
+      /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way
+      --certificate-authority=/root/certs/ca.crt
+      --embed-certs=true
+      --server=https://server.kubernetes.local:6443
+  changed_when: true
+
+- name: Configure kubectl credentials
+  ansible.builtin.command:
+    cmd: >
+      /usr/local/bin/kubectl config set-credentials admin
+      --client-certificate=/root/certs/admin.crt
+      --client-key=/root/certs/admin.key
+      --embed-certs=true
+  changed_when: true
+
+- name: Configure kubectl context
+  ansible.builtin.command:
+    cmd: >
+      /usr/local/bin/kubectl config set-context kubernetes-the-hard-way
+      --cluster=kubernetes-the-hard-way
+      --user=admin
+  changed_when: true
+
+- name: Use kubectl context
+  ansible.builtin.command:
+    cmd: /usr/local/bin/kubectl config use-context kubernetes-the-hard-way
+  changed_when: true

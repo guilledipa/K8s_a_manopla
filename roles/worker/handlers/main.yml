@@ -1,0 +1,9 @@
+---
+- name: Restart worker services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - containerd
+    - kubelet
+    - kube-proxy

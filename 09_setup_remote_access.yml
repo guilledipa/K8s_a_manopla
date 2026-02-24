@@ -1,0 +1,6 @@
+---
+- name: Setup Remote Access
+  hosts: jumpbox
+  become: true
+  roles:
+    - kubectl_config

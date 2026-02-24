@@ -8,25 +8,29 @@
     - /etc/kubernetes/config
     - /var/lib/kubernetes
 
-- name: Slurp Kubernetes controller binaries from Jumpbox
-  ansible.builtin.slurp:
-    src: "{{ jumpbox_setup_downloads_dir }}/{{ item }}"
-  register: control_plane_binaries_slurped
+- name: Push Kubernetes controller binaries from Jumpbox to controllers
+  ansible.posix.synchronize:
+    src: "{{ jumpbox_setup_downloads_dir }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
   delegate_to: jumpbox
   loop:
-    - controller/kube-apiserver
-    - controller/kube-controller-manager
-    - controller/kube-scheduler
-    - client/kubectl
+    - { src: controller/kube-apiserver, dest: /usr/local/bin/kube-apiserver }
+    - {
+        src: controller/kube-controller-manager,
+        dest: /usr/local/bin/kube-controller-manager,
+      }
+    - { src: controller/kube-scheduler, dest: /usr/local/bin/kube-scheduler }
+    - { src: client/kubectl, dest: /usr/local/bin/kubectl }
 
-- name: Install Kubernetes controller binaries
-  ansible.builtin.copy:
-    content: "{{ item.content | b64decode }}"
-    dest: "/usr/local/bin/{{ item.item | basename }}"
+- name: Set permissions on Kubernetes binaries
+  ansible.builtin.file:
+    path: "/usr/local/bin/{{ item }}"
     mode: "0755"
-  loop: "{{ control_plane_binaries_slurped.results }}"
-  loop_control:
-    label: "{{ item.item | basename }}"
+  loop:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - kubectl
 
 - name: Move certificates and configs to /var/lib/kubernetes
   ansible.builtin.copy:
