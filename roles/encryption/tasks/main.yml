@@ -1,6 +1,6 @@
 ---
 - name: Generate encryption key on Jumpbox
-  ansible.builtin.shell: head -c 32 /dev/urandom | base64
+  ansible.builtin.command: openssl rand -base64 32
   register: encryption_key_raw
   when: inventory_hostname == 'jumpbox'
   changed_when: false

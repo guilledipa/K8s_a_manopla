@@ -1,0 +1,52 @@
+---
+- name: Create etcd directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/etcd, mode: "0755" }
+    - { path: /var/lib/etcd, mode: "0700" }
+
+- name: Slurp etcd binaries from Jumpbox
+  ansible.builtin.slurp:
+    src: "{{ jumpbox_setup_downloads_dir }}/{{ item }}"
+  register: etcd_binaries_slurped
+  delegate_to: jumpbox
+  loop:
+    - controller/etcd
+    - client/etcdctl
+
+- name: Install etcd binaries
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "/usr/local/bin/{{ item.item | basename }}"
+    mode: "0755"
+  loop: "{{ etcd_binaries_slurped.results }}"
+  loop_control:
+    label: "{{ item.item | basename }}"
+
+- name: Copy certificates to /etc/etcd
+  ansible.builtin.copy:
+    src: "/root/{{ item }}"
+    dest: "/etc/etcd/{{ item }}"
+    mode: "0644"
+    remote_src: true
+  loop:
+    - ca.crt
+    - kube-api-server.crt
+    - kube-api-server.key
+
+- name: Install etcd.service unit file
+  ansible.builtin.template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    mode: "0644"
+  notify: Restart etcd
+
+- name: Start and enable etcd service
+  ansible.builtin.service:
+    name: etcd
+    state: started
+    enabled: true
+    daemon_reload: true

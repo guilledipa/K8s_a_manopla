@@ -1,0 +1,5 @@
+---
+- name: etcd handlers
+  ansible.builtin.service:
+    name: etcd
+    state: restarted

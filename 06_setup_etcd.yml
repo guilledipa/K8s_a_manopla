@@ -1,0 +1,6 @@
+---
+- name: Bootstrap etcd Cluster
+  hosts: controllers
+  become: true
+  roles:
+    - etcd
