@@ -1,0 +1,6 @@
+---
+- name: Provision Pod Network Routes
+  hosts: k8s
+  become: true
+  roles:
+    - pod_routes

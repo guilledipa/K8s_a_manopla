@@ -1,0 +1,13 @@
+---
+- name: Add routes to worker pod networks
+  ansible.builtin.command:
+    cmd: "ip route add {{ item.pod_cidr }} via {{ item.internal_ip }}"
+  loop: "{{ groups['workers'] | map('extract', hostvars) | list }}"
+  when:
+    - inventory_hostname != item.inventory_hostname
+    - item.pod_cidr is defined
+  register: pod_routes_res
+  failed_when:
+    - pod_routes_res.rc != 0
+    - "'File exists' not in pod_routes_res.stderr"
+  changed_when: pod_routes_res.rc == 0
