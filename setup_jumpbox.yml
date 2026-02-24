@@ -1,0 +1,6 @@
+---
+- name: Configure KTHW Jumpbox
+  hosts: jumpbox
+  become: true
+  roles:
+    - jumpbox_setup

@@ -1,0 +1,120 @@
+---
+- name: Run apt-get update
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install base utilities and QEMU tools
+  ansible.builtin.apt:
+    name:
+      - wget
+      - curl
+      - vim
+      - openssl
+      - git
+      - qemu-utils
+    state: present
+
+- name: Clone KTHW repository
+  ansible.builtin.git:
+    repo: "{{ jumpbox_setup_repo }}"
+    dest: "{{ jumpbox_setup_dir }}"
+    depth: 1
+    version: master
+
+- name: Create downloads directories
+  ansible.builtin.file:
+    path: "{{ jumpbox_setup_downloads_dir }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - client
+    - cni-plugins
+    - controller
+    - worker
+
+- name: Read downloads file
+  ansible.builtin.slurp:
+    src: "{{ jumpbox_setup_dir }}/downloads-{{ jumpbox_setup_arch }}.txt"
+  register: jumpbox_setup_downloads_file_content
+
+- name: Set binary download list
+  ansible.builtin.set_fact:
+    jumpbox_setup_binary_urls: "{{ (jumpbox_setup_downloads_file_content.content | b64decode).splitlines() | select('search', '^http') | list }}"
+
+- name: Download Kubernetes binaries
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: "{{ jumpbox_setup_downloads_dir }}/"
+    mode: "0644"
+  loop: "{{ jumpbox_setup_binary_urls }}"
+
+- name: Define versions (based on tutorial defaults or extracted)
+  ansible.builtin.set_fact:
+    jumpbox_setup_k8s_version: "v1.32.0"
+    jumpbox_setup_cni_version: "v1.6.2"
+    jumpbox_setup_etcd_version: "v3.6.0-rc.3"
+    jumpbox_setup_containerd_version: "2.1.0-beta.0"
+
+- name: Extract binaries (crictl)
+  ansible.builtin.unarchive:
+    src: "{{ jumpbox_setup_downloads_dir }}/crictl-{{ jumpbox_setup_k8s_version }}-linux-{{ jumpbox_setup_arch }}.tar.gz"
+    dest: "{{ jumpbox_setup_downloads_dir }}/worker/"
+    remote_src: true
+
+- name: Extract binaries (containerd)
+  ansible.builtin.unarchive:
+    src: "{{ jumpbox_setup_downloads_dir }}/containerd-{{ jumpbox_setup_containerd_version }}-linux-{{ jumpbox_setup_arch }}.tar.gz"
+    dest: "{{ jumpbox_setup_downloads_dir }}/worker/"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+
+- name: Extract binaries (cni-plugins)
+  ansible.builtin.unarchive:
+    src: "{{ jumpbox_setup_downloads_dir }}/cni-plugins-linux-{{ jumpbox_setup_arch }}-{{ jumpbox_setup_cni_version }}.tgz"
+    dest: "{{ jumpbox_setup_downloads_dir }}/cni-plugins/"
+    remote_src: true
+
+- name: Extract binaries (etcd)
+  ansible.builtin.unarchive:
+    src: "{{ jumpbox_setup_downloads_dir }}/etcd-{{ jumpbox_setup_etcd_version }}-linux-{{ jumpbox_setup_arch }}.tar.gz"
+    dest: "{{ jumpbox_setup_downloads_dir }}/"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+    include:
+      - "etcd-{{ jumpbox_setup_etcd_version }}-linux-{{ jumpbox_setup_arch }}/etcdctl"
+      - "etcd-{{ jumpbox_setup_etcd_version }}-linux-{{ jumpbox_setup_arch }}/etcd"
+
+- name: Organize binaries
+  ansible.builtin.copy:
+    src: "{{ jumpbox_setup_downloads_dir }}/{{ item.src }}"
+    dest: "{{ jumpbox_setup_downloads_dir }}/{{ item.dest }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - src: etcdctl
+      dest: client/etcdctl
+    - src: kubectl
+      dest: client/kubectl
+    - src: etcd
+      dest: controller/etcd
+    - src: kube-apiserver
+      dest: controller/kube-apiserver
+    - src: kube-controller-manager
+      dest: controller/kube-controller-manager
+    - src: kube-scheduler
+      dest: controller/kube-scheduler
+    - src: kubelet
+      dest: worker/kubelet
+    - src: kube-proxy
+      dest: worker/kube-proxy
+    - src: runc.{{ jumpbox_setup_arch }}
+      dest: worker/runc
+
+- name: Install kubectl
+  ansible.builtin.copy:
+    src: "{{ jumpbox_setup_downloads_dir }}/client/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+    remote_src: true

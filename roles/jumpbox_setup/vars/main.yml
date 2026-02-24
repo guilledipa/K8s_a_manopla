@@ -1,0 +1,11 @@
+---
+jumpbox_setup_repo: https://github.com/kelseyhightower/kubernetes-the-hard-way.git
+jumpbox_setup_dir: /root/kubernetes-the-hard-way
+jumpbox_setup_downloads_dir: "{{ jumpbox_setup_dir }}/downloads"
+
+# Architecture mapping
+jumpbox_setup_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+
+jumpbox_setup_arch: "{{ jumpbox_setup_arch_map[ansible_architecture] | default(ansible_architecture) }}"
