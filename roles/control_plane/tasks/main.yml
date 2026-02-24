@@ -1,0 +1,94 @@
+---
+- name: Create Kubernetes directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /etc/kubernetes/config
+    - /var/lib/kubernetes
+
+- name: Slurp Kubernetes controller binaries from Jumpbox
+  ansible.builtin.slurp:
+    src: "{{ jumpbox_setup_downloads_dir }}/{{ item }}"
+  register: control_plane_binaries_slurped
+  delegate_to: jumpbox
+  loop:
+    - controller/kube-apiserver
+    - controller/kube-controller-manager
+    - controller/kube-scheduler
+    - client/kubectl
+
+- name: Install Kubernetes controller binaries
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "/usr/local/bin/{{ item.item | basename }}"
+    mode: "0755"
+  loop: "{{ control_plane_binaries_slurped.results }}"
+  loop_control:
+    label: "{{ item.item | basename }}"
+
+- name: Move certificates and configs to /var/lib/kubernetes
+  ansible.builtin.copy:
+    src: "/root/{{ item }}"
+    dest: "/var/lib/kubernetes/{{ item }}"
+    mode: "0600"
+    remote_src: true
+  loop:
+    - ca.crt
+    - ca.key
+    - kube-api-server.key
+    - kube-api-server.crt
+    - service-accounts.key
+    - service-accounts.crt
+    - encryption-config.yaml
+    - kube-controller-manager.kubeconfig
+    - kube-scheduler.kubeconfig
+
+- name: Install kube-scheduler.yaml
+  ansible.builtin.template:
+    src: kube-scheduler.yaml.j2
+    dest: /etc/kubernetes/config/kube-scheduler.yaml
+    mode: "0644"
+
+- name: Install systemd unit files
+  ansible.builtin.template:
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+    mode: "0644"
+  loop:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+  notify: Restart control plane services
+
+- name: Start and enable control plane services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  loop:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+
+- name: Wait for API server to be ready
+  ansible.builtin.uri:
+    url: https://127.0.0.1:6443/healthz
+    validate_certs: false
+  register: control_plane_api_res
+  until: control_plane_api_res.status == 200
+  retries: 10
+  delay: 2
+
+- name: Apply RBAC for Kubelet authorization
+  ansible.builtin.copy:
+    src: kube-apiserver-to-kubelet.yaml
+    dest: /root/kube-apiserver-to-kubelet.yaml
+    mode: "0644"
+
+- name: Apply RBAC manifest
+  ansible.builtin.command:
+    cmd: kubectl apply -f /root/kube-apiserver-to-kubelet.yaml --kubeconfig /root/admin.kubeconfig
+  changed_when: true

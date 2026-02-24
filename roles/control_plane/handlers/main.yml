@@ -1,0 +1,9 @@
+---
+- name: Restart control plane services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler

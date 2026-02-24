@@ -1,0 +1,6 @@
+---
+- name: Bootstrap Kubernetes Control Plane
+  hosts: controllers
+  become: true
+  roles:
+    - control_plane
